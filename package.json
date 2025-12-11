@@ -5,38 +5,39 @@
   "main": "main.js",
   "author": "你自己",
   "license": "MIT",
-  "scripts": {
-    "start": "electron .",
-    "dist": "electron-builder"
-  },
+"scripts": {
+  "start": "electron .",
+  "dist": "electron-builder -p never"
+},
   "devDependencies": {
     "electron": "^30.5.1",
     "electron-builder": "^24.13.3"
   },
-  "build": {
-    "appId": "com.winwin.editor",
-    "productName": "WinWin 编辑器",
-    "files": [
-      "main.js",
-      "preload.js",
-      "editor.html",
-      "package.json"
-    ],
-    "directories": {
-      "buildResources": "build",
-      "output": "dist"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
+"build": {
+  "appId": "com.winwin.editor",
+  "productName": "WinWin 编辑器",
+  "files": [
+    "main.js",
+    "preload.js",
+    "editor.html",
+    "package.json"
+  ],
+  "directories": {
+    "buildResources": "build",
+    "output": "dist"
   },
+  "win": {
+    "target": "nsis"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
+  },
+  "publish": "never"  // <-- 这行代码是关键，禁用自动发布
+},
   "dependencies": {
     "7zip-bin": "^5.2.0",
     "agent-base": "^6.0.2",
