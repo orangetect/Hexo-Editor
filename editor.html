@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hexo WinWin Editor</title>
+
+  <!-- 第三方库 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/common.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+
+  <!-- MathJax 配置 -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px; /* 全局稍微大一点 */
+    }
+
+    body[data-theme="dark"] {
+      background: #05060a;        /* 更深的暗色 */
+      color: #f5f5f5;
+    }
+    body[data-theme="light"] {
+      background: #f5f5f5;
+      color: #111;
+    }
+
+    :root {
+      --border-color: rgba(148, 163, 184, 0.5);      /* 稍微亮一点的边框 */
+      --panel-bg: rgba(15, 23, 42, 0.96);            /* 深蓝黑面板 */
+      --toolbar-bg: rgba(15, 23, 42, 0.98);          /* 深色工具栏 */
+    }
+    body[data-theme="light"] {
+      --border-color: rgba(0, 0, 0, 0.12);
+      --panel-bg: rgba(255, 255, 255, 0.9);
+      --toolbar-bg: rgba(255, 255, 255, 0.92);
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* 工具栏 */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--toolbar-bg);
+      border-bottom: 1px solid var(--border-color);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .toolbar-section {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-right: 10px;
+      margin-right: 10px;
+      border-right: 1px solid rgba(148, 163, 184, 0.45);
+    }
+    body[data-theme="light"] .toolbar-section {
+      border-right-color: rgba(0, 0, 0, 0.08);
+    }
+    .toolbar-section:last-child {
+      border-right: none;
+      margin-right: 0;
+      padding-right: 0;
+    }
+    .toolbar-label {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    button,
+    select,
+    input[type="color"],
+    input[type="file"] {
+      border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: rgba(15, 23, 42, 0.85);
+      color: inherit;
+      padding: 4px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+    }
+    body[data-theme="light"] button,
+    body[data-theme="light"] select,
+    body[data-theme="light"] input[type="color"],
+    body[data-theme="light"] input[type="file"] {
+      border-color: rgba(0, 0, 0, 0.18);
+      background: rgba(255, 255, 255, 0.95);
+    }
+    button:hover {
+      background: rgba(30, 64, 175, 0.9);
+    }
+    body[data-theme="light"] button:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+    button:active { transform: translateY(1px); }
+    select { padding-right: 24px; }
+    input[type="color"] {
+      padding: 0;
+      width: 32px;
+      height: 24px;
+      border-radius: 4px;
+    }
+    input[type="file"] { max-width: 160px; }
+    .btn-small { font-size: 12px; padding: 3px 8px; }
+
+    /* 主体布局 */
+.main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr 1fr;
+  gap: 10px;
+  padding: 8px 10px;
+  min-height: calc(100vh - 80px); /* 工具栏 + 底部 预留一点 */
+}
+    .panel {
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      background: var(--panel-bg);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .panel-header {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+.panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;   /* 这里改回 auto，且不要 display:flex */
+}
+/* 只让编辑面板和预览面板的 body 用 flex 布局 */
+#editor-panel .panel-body,
+#preview-panel .panel-body {
+  display: flex;
+  overflow: hidden;   /* 滚动交给内部内容 */
+}
+
+/* 里面的内容容器铺满高度 */
+#editor-panel .editor-content,
+#preview-panel .editor-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 文本框 & 预览本身占满高度，内部滚动 */
+#markdown-input {
+  width: 100%;
+  flex: 1;
+  border: none;
+  resize: none;
+  background: transparent;
+  color: inherit;
+  font-family: "Fira Code", Consolas, "Courier New", monospace;
+  font-size: 15px;
+  line-height: 1.7;
+  outline: none;
+  padding: 4px 0;
+  overflow: auto;
+}
+
+#preview {
+  width: 100%;
+  flex: 1;
+  overflow: auto;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+
+    .form-group {
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 2px;
+      opacity: 0.85;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: rgba(15, 23, 42, 0.9);
+      color: inherit;
+      padding: 4px 8px;
+      font-size: 13px;
+      outline: none;
+      resize: vertical;
+    }
+    body[data-theme="light"] .form-group input,
+    body[data-theme="light"] .form-group textarea {
+      border-color: rgba(0, 0, 0, 0.18);
+      background: rgba(255, 255, 255, 0.95);
+    }
+    .form-group small {
+      font-size: 11px;
+      opacity: 0.7;
+    }
+
+    #markdown-input {
+      width: 100%;
+      height: 100%;
+      border: none;
+      resize: none;
+      background: transparent;
+      color: inherit;
+      font-family: "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 15px;      /* 编辑区字体 */
+      line-height: 1.6;
+      outline: none;
+      padding: 0;
+    }
+    #preview {
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      font-size: 16px;      /* 预览稍大一点 */
+      line-height: 1.7;
+    }
+    #preview img {
+      max-width: 100%;
+      border-radius: 10px;
+      margin: 6px 0;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    }
+    #preview pre {
+      padding: 10px;
+      border-radius: 8px;
+      overflow: auto;
+    }
+    #preview code {
+      font-family: "Fira Code", Consolas, "Courier New", monospace;
+    }
+    #preview blockquote {
+      border-left: 3px solid rgba(148,163,184,0.8);
+      padding-left: 10px;
+      margin-left: 0;
+      opacity: 0.9;
+    }
+
+.editor-bg-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  height: 100%;        /* 吃满 panel-body */
+  overflow: hidden;
+  border-radius: 10px;
+}
+    .editor-bg-inner {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 0;
+      opacity: 0.35;
+    }
+    .editor-bg-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top, rgba(255,255,255,0.12), transparent 40%),
+                  linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(0,0,0,0.55));
+      z-index: 1;
+      pointer-events: none;
+    }
+.editor-content {
+  position: relative;
+  z-index: 2;
+  padding: 10px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;    /* 由内部滚动 */
+}
+
+    body[data-mode="write"] #preview-panel { display: none; }
+    body[data-mode="write"] #editor-panel { grid-column: span 2; }
+    body[data-mode="preview"] #editor-panel { display: none; }
+    body[data-mode="preview"] #preview-panel { grid-column: span 2; }
+
+    .footer {
+      padding: 6px 12px;
+      font-size: 12px;
+      opacity: 0.6;
+      text-align: right;
+      border-top: 1px solid var(--border-color);
+    }
+
+    #output-dir-label,
+    #hexo-dir-label {
+      max-width: 160px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    @media (max-width: 1100px) {
+      .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+      }
+      #editor-panel, #preview-panel {
+        grid-column: span 1 !important;
+      }
+    }
+  </style>
+</head>
+<body data-theme="dark" data-mode="both">
+<div class="app">
+  <!-- 顶部工具栏 -->
+  <div class="toolbar">
+    <div class="toolbar-section">
+      <span class="toolbar-label">模式</span>
+      <button class="btn-small" onclick="setMode('write')">只写</button>
+      <button class="btn-small" onclick="setMode('both')">分屏</button>
+      <button class="btn-small" onclick="setMode('preview')">只看</button>
+    </div>
+
+    <div class="toolbar-section">
+      <span class="toolbar-label">主题</span>
+      <select id="theme-select" onchange="changeTheme(this.value)">
+        <option value="dark">暗色</option>
+        <option value="light">亮色</option>
+      </select>
+    </div>
+
+    <div class="toolbar-section">
+      <span class="toolbar-label">背景颜色</span>
+      <input type="color" id="bg-color-input" value="#20232a" onchange="changeBgColor(this.value)">
+      <label class="btn-small">
+        本地背景图
+        <input type="file" id="bg-image-input" accept="image/*" style="display:none">
+      </label>
+      <button class="btn-small" onclick="clearBackground()">清除</button>
+    </div>
+
+    <div class="toolbar-section">
+      <label class="btn-small">
+        插入本地图片
+        <input type="file" id="insert-image-input" accept="image/*" style="display:none">
+      </label>
+      <button class="btn-small" onclick="insertImageByUrl()">插入网络图片</button>
+    </div>
+
+    <!-- Markdown 语法快捷 -->
+    <div class="toolbar-section">
+      <span class="toolbar-label">Markdown</span>
+      <button class="btn-small" onclick="insertHeading('# ')">H1</button>
+      <button class="btn-small" onclick="insertHeading('## ')">H2</button>
+      <button class="btn-small" onclick="insertHeading('### ')">H3</button>
+      <button class="btn-small" onclick="insertHeading('#### ')">H4</button>
+      <button class="btn-small" onclick="insertHeading('##### ')">H5</button>
+
+      <button class="btn-small" onclick="wrapSelection('**','**')"><b>B</b></button>
+      <button class="btn-small" onclick="wrapSelection('*','*')"><i>I</i></button>
+      <button class="btn-small" onclick="wrapSelection('~~','~~')">S</button>
+      <button class="btn-small" onclick="wrapSelection('***','***')">B+I</button>
+      <button class="btn-small" onclick="wrapSelection('^','^')">上标</button>
+      <button class="btn-small" onclick="insertList('- ')">• 列表</button>
+      <button class="btn-small" onclick="insertList('1. ')">1. 列表</button>
+      <button class="btn-small" onclick="wrapSelection('[','](链接地址)')">链接</button>
+      <button class="btn-small" onclick="wrapSelection('`','`')">行内代码</button>
+      <button class="btn-small" onclick="insertCodeBlock()">代码块</button>
+      <button class="btn-small" onclick="insertQuote()">引用</button>
+    </div>
+
+    <!-- 文字颜色 -->
+    <div class="toolbar-section">
+      <span class="toolbar-label">文字颜色</span>
+      <input type="color" id="font-color-input" value="#ff4d4f">
+      <button class="btn-small" onclick="applyTextColor()">应用</button>
+    </div>
+
+    <!-- 输出目录 -->
+    <div class="toolbar-section">
+      <span class="toolbar-label">输出目录</span>
+      <button class="btn-small" onclick="chooseOutputDir()">选择</button>
+      <span id="output-dir-label" class="toolbar-label"></span>
+    </div>
+
+    <!-- Hexo 目录 + 一键操作 -->
+    <div class="toolbar-section">
+      <span class="toolbar-label">Hexo 目录</span>
+      <button class="btn-small" onclick="chooseHexoDir()">选择</button>
+      <span id="hexo-dir-label" class="toolbar-label"></span>
+      <button class="btn-small" onclick="openHexoDir()">打开</button>
+      <button class="btn-small" onclick="runHexoClean()">hexo clean</button>
+      <button class="btn-small" onclick="runHexoG()">hexo g</button>
+      <button class="btn-small" onclick="runHexoD()">hexo d</button>
+      <button class="btn-small" onclick="runHexoS()">hexo s</button>
+      <button class="btn-small" onclick="exportToHexo()">导出到 Hexo</button>
+    </div>
+
+    <div class="toolbar-section">
+      <button onclick="exportMarkdown()">导出 Markdown</button>
+      <button onclick="exportHtml()">导出 HTML</button>
+    </div>
+  </div>
+
+  <!-- 主体 -->
+  <div class="main">
+    <!-- Hexo Front-matter -->
+    <div class="panel" id="meta-panel">
+      <div class="panel-header">
+        <span>Hexo 文章信息</span>
+        <button class="btn-small" onclick="fillNow()">当前时间</button>
+      </div>
+      <div class="panel-body">
+        <div class="form-group">
+          <label for="meta-title">标题 title</label>
+          <input id="meta-title" type="text" placeholder="文章标题">
+        </div>
+        <div class="form-group">
+          <label for="meta-slug">固定链接 slug（选填）</label>
+          <input id="meta-slug" type="text" placeholder="例如 my-post-slug">
+        </div>
+        <div class="form-group">
+          <label for="meta-date">日期 date</label>
+          <input id="meta-date" type="text" placeholder="YYYY-MM-DD HH:mm:ss">
+        </div>
+        <div class="form-group">
+          <label for="meta-tags">标签 tags（逗号分隔）</label>
+          <input id="meta-tags" type="text" placeholder="tag1, tag2, tag3">
+        </div>
+        <div class="form-group">
+          <label for="meta-categories">分类 categories（逗号分隔）</label>
+          <input id="meta-categories" type="text" placeholder="cat1, cat2">
+        </div>
+        <div class="form-group">
+          <label for="meta-excerpt">摘要（可选）</label>
+          <textarea id="meta-excerpt" rows="3" placeholder="文章摘要，可选"></textarea>
+        </div>
+        <!-- 自定义 front-matter 字段 -->
+        <div class="form-group">
+          <label for="meta-extra">自定义 front-matter（每行一条）</label>
+          <textarea id="meta-extra" rows="3" placeholder="例如：
+password: 1234
+top: true
+cover: /images/cover.png"></textarea>
+          <small>这里的内容会原样追加到 front-matter 中。</small>
+        </div>
+        <div class="form-group">
+          <label for="bg-url-input">背景图片 URL（网络）</label>
+          <input id="bg-url-input" type="text" placeholder="粘贴图片链接后点击应用">
+          <button class="btn-small" style="margin-top:4px;" onclick="applyBgUrl()">应用背景图</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 编辑区 -->
+    <div class="panel" id="editor-panel">
+      <div class="panel-header">
+        <span>Markdown 编辑</span>
+        <small style="opacity:.7;">支持各种 Markdown 语法 / 颜色 / 图片</small>
+      </div>
+      <div class="panel-body">
+        <div class="editor-bg-wrapper">
+          <div class="editor-bg-inner" id="editor-bg-inner"></div>
+          <div class="editor-bg-overlay"></div>
+          <div class="editor-content">
+            <textarea id="markdown-input" spellcheck="false"
+              placeholder="# 标题一
+## 标题二
+### 标题三
+#### 标题四
+##### 标题五
+
+**加粗功能**
+
+*斜体*
+
+~~删除线~~
+
+***又粗又斜体***
+
+^上标^
+
+无序列表
+- 列表项 1
+- 列表项 2
+- 列表项 3
+
+有序列表
+1. 第一项
+   - 子项1
+   - 子项2
+2. 第二项
+
+链接
+[链接文本](https://example.com)
+
+参考式链接
+[链接文本][id]
+[id]: https://example.com
+
+图片链接
+![替代文本](https://example.com/image.png)
+
+参考式图片
+![替代文本][img-id]
+[img-id]: https://example.com/image.png
+
+行内代码 `代码文本`
+
+```python
+print('这是一个代码块')
+
+引用
+
+使用上方工具栏也可以快速插入这些语法。"></textarea>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 预览区 -->
+<div class="panel" id="preview-panel">
+  <div class="panel-header">
+    <span>预览</span>
+    <small style="opacity:.7;">支持代码高亮 / MathJax / Mermaid / 颜色</small>
+  </div>
+  <div class="panel-body">
+    <div class="editor-bg-wrapper">
+      <div class="editor-bg-inner" id="preview-bg-inner"></div>
+      <div class="editor-bg-overlay"></div>
+      <div class="editor-content" id="preview"></div>
+    </div>
+  </div>
+</div>
+
+</div> <div class="footer"> Hexo WinWin Editor — 本地 Markdown + Hexo front-matter + 颜色 & 输出目录 & 一键 Hexo <script>
+/* ================================
+   配置与全局变量
+================================ */
+const CONFIG = {
+  storageKeyMeta: 'winwin_hexo_meta',
+  storageKeyContent: 'winwin_hexo_content',
+  storageKeyTheme: 'winwin_hexo_theme',
+  storageKeyMode: 'winwin_hexo_mode',
+  storageKeyBg: 'winwin_hexo_bg',
+  storageKeyOutputDir: 'winwin_hexo_output_dir',
+  storageKeyHexoDir: 'winwin_hexo_hexo_dir'
+};
+
+const meta = {
+  title: document.getElementById('meta-title'),
+  slug: document.getElementById('meta-slug'),
+  date: document.getElementById('meta-date'),
+  tags: document.getElementById('meta-tags'),
+  categories: document.getElementById('meta-categories'),
+  excerpt: document.getElementById('meta-excerpt'),
+  extra: document.getElementById('meta-extra') // 新增字段
+};
+
+const markdownInput = document.getElementById('markdown-input');
+const preview = document.getElementById('preview');
+const bgColorInput = document.getElementById('bg-color-input');
+const bgImageInput = document.getElementById('bg-image-input');
+const insertImageInput = document.getElementById('insert-image-input');
+const themeSelect = document.getElementById('theme-select');
+const editorBgInner = document.getElementById('editor-bg-inner');
+const previewBgInner = document.getElementById('preview-bg-inner');
+const outputDirLabel = document.getElementById('output-dir-label');
+const hexoDirLabel = document.getElementById('hexo-dir-label');
+
+let outputDir = null;
+let hexoDir = null;
+
+/* ================================
+   第三方库初始化
+================================ */
+mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+  highlight(code, lang) {
+    if (lang && window.hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang }).value;
+    }
+    return hljs.highlightAuto(code).value;
+  }
+});
+
+/* ================================
+   主题 / 布局
+================================ */
+function changeTheme(theme) {
+  document.body.setAttribute('data-theme', theme);
+  mermaid.initialize({ startOnLoad: false, theme: theme === 'dark' ? 'dark' : 'default' });
+  localStorage.setItem(CONFIG.storageKeyTheme, theme);
+  renderPreview();
+}
+
+function setMode(mode) {
+  document.body.setAttribute('data-mode', mode);
+  localStorage.setItem(CONFIG.storageKeyMode, mode);
+}
+
+/* ================================
+   背景控制
+================================ */
+function setBgColor(color) {
+  editorBgInner.style.backgroundImage = '';
+  previewBgInner.style.backgroundImage = '';
+  editorBgInner.style.backgroundColor = color;
+  previewBgInner.style.backgroundColor = color;
+}
+
+function changeBgColor(color) {
+  setBgColor(color);
+  saveBgConfig();
+}
+
+function applyBgUrl() {
+  const url = document.getElementById('bg-url-input').value.trim();
+  if (!url) return;
+  editorBgInner.style.backgroundImage = `url("${url}")`;
+  previewBgInner.style.backgroundImage = `url("${url}")`;
+  saveBgConfig(url);
+}
+
+function clearBackground() {
+  editorBgInner.style.backgroundImage = '';
+  previewBgInner.style.backgroundImage = '';
+  setBgColor('#20232a');
+  document.getElementById('bg-url-input').value = '';
+  saveBgConfig('');
+}
+
+bgImageInput.addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const src = e.target.result;
+    editorBgInner.style.backgroundImage = `url("${src}")`;
+    previewBgInner.style.backgroundImage = `url("${src}")`;
+    saveBgConfig(src);
+  };
+  reader.readAsDataURL(file);
+  this.value = '';
+});
+
+function saveBgConfig(imageSrc) {
+  const data = {
+    color: bgColorInput.value,
+    image: imageSrc || editorBgInner.style.backgroundImage.replace(/^url\("(.*)"\)$/, '$1') || ''
+  };
+  localStorage.setItem(CONFIG.storageKeyBg, JSON.stringify(data));
+}
+
+/* ================================
+   图片插入（Markdown）
+================================ */
+function insertImageMarkdown(src) {
+  const el = markdownInput;
+  const start = el.selectionStart || 0;
+  const text = el.value;
+  const insertText = `![替代文本](${src})`;
+
+  el.value = text.slice(0, start) + insertText + text.slice(start);
+  el.focus();
+  el.selectionStart = el.selectionEnd = start + insertText.length;
+
+  renderPreview();
+  saveContent();
+}
+
+insertImageInput.addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => insertImageMarkdown(e.target.result);
+  reader.readAsDataURL(file);
+  this.value = '';
+});
+
+function insertImageByUrl() {
+  const url = prompt('请输入图片 URL：');
+  if (!url) return;
+  insertImageMarkdown(url.trim());
+}
+
+// 粘贴图片
+markdownInput.addEventListener('paste', function (e) {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.indexOf('image') !== -1) {
+      const file = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = evt => insertImageMarkdown(evt.target.result);
+      reader.readAsDataURL(file);
+      e.preventDefault();
+      break;
+    }
+  }
+});
+
+/* ================================
+   Markdown 渲染
+================================ */
+function renderPreview() {
+  let raw = markdownInput.value;
+
+  raw = raw.replace(/\^([^\^\n]+)\^/g, '<sup>$1</sup>');
+
+  let html = marked.parse(raw);
+
+  html = html.replace(
+    /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g,
+    (_, code) =>
+      `<div class="mermaid">${code.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}</div>`
+  );
+
+  preview.innerHTML = html;
+
+  try {
+    mermaid.run({ nodes: preview.querySelectorAll('.mermaid') });
+  } catch (e) {}
+
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    MathJax.typesetPromise([preview]);
+  }
+}
+
+markdownInput.addEventListener(
+  'input',
+  debounce(() => {
+    renderPreview();
+    saveContent();
+  }, 200)
+);
+
+/* ================================
+   自动存储
+================================ */
+function saveMeta() {
+  const data = {
+    title: meta.title.value,
+    slug: meta.slug.value,
+    date: meta.date.value,
+    tags: meta.tags.value,
+    categories: meta.categories.value,
+    excerpt: meta.excerpt.value,
+    extra: meta.extra.value
+  };
+  localStorage.setItem(CONFIG.storageKeyMeta, JSON.stringify(data));
+}
+
+function saveContent() {
+  localStorage.setItem(CONFIG.storageKeyContent, markdownInput.value);
+}
+
+Object.values(meta).forEach(el => {
+  el.addEventListener('input', debounce(saveMeta, 200));
+});
+
+/* ================================
+   Markdown 语法快捷键
+================================ */
+function wrapSelection(before, after) {
+  const el = markdownInput;
+  const start = el.selectionStart || 0;
+  const end = el.selectionEnd || 0;
+  const text = el.value;
+  const selected = text.slice(start, end) || '文本';
+  const insert = before + selected + after;
+
+  el.value = text.slice(0, start) + insert + text.slice(end);
+  el.focus();
+  el.selectionStart = el.selectionEnd = start + insert.length;
+
+  renderPreview();
+  saveContent();
+}
+
+function insertHeading(prefix) {
+  const el = markdownInput;
+  const pos = el.selectionStart || 0;
+  const text = el.value;
+
+  let lineStart = text.lastIndexOf('\n', pos - 1);
+  lineStart = lineStart === -1 ? 0 : lineStart + 1;
+
+  let lineEnd = text.indexOf('\n', pos);
+  lineEnd = lineEnd === -1 ? text.length : lineEnd;
+
+  const line = text.slice(lineStart, lineEnd);
+  const newLine = prefix + line.replace(/^#+\s*/, '');
+
+  el.value = text.slice(0, lineStart) + newLine + text.slice(lineEnd);
+  el.focus();
+  el.selectionStart = el.selectionEnd = lineStart + newLine.length;
+
+  renderPreview();
+  saveContent();
+}
+
+function insertList(prefix) {
+  const el = markdownInput;
+  const pos = el.selectionStart || 0;
+  const text = el.value;
+
+  let lineStart = text.lastIndexOf('\n', pos - 1);
+  lineStart = lineStart === -1 ? 0 : lineStart + 1;
+
+  let lineEnd = text.indexOf('\n', pos);
+  lineEnd = lineEnd === -1 ? text.length : lineEnd;
+
+  const line = text.slice(lineStart, lineEnd);
+  const newLine = prefix + line.replace(/^([*-]|\d+\.)\s+/, '');
+
+  el.value = text.slice(0, lineStart) + newLine + text.slice(lineEnd);
+
+  el.focus();
+  el.selectionStart = el.selectionEnd = lineStart + newLine.length;
+
+  renderPreview();
+  saveContent();
+}
+
+function insertCodeBlock() {
+  const el = markdownInput;
+  const pos = el.selectionStart || 0;
+
+  const block = `\n\`\`\`language\n代码文本\n\`\`\`\n`;
+
+  el.value = el.value.slice(0, pos) + block + el.value.slice(pos);
+  el.focus();
+  el.selectionStart = el.selectionEnd = pos + block.length;
+
+  renderPreview();
+  saveContent();
+}
+
+function insertQuote() {
+  const el = markdownInput;
+  const pos = el.selectionStart || 0;
+
+  const insert = `\n> 引用内容\n`;
+
+  el.value = el.value.slice(0, pos) + insert + el.value.slice(pos);
+  el.focus();
+  el.selectionStart = el.selectionEnd = pos + insert.length;
+
+  renderPreview();
+  saveContent();
+}
+
+function applyTextColor() {
+  const color = document.getElementById('font-color-input').value || '#ff4d4f';
+  wrapSelection(`<span style="color:${color}">`, '</span>');
+}
+
+/* ================================
+   生成 Hexo front-matter
+================================ */
+function buildFrontMatter() {
+  const title = meta.title.value.trim();
+  const slug = meta.slug.value.trim();
+  const date = meta.date.value.trim();
+  const tags = meta.tags.value.split(',').map(s => s.trim()).filter(Boolean);
+  const categories = meta.categories.value.split(',').map(s => s.trim()).filter(Boolean);
+  const excerpt = meta.excerpt.value.trim();
+  const extraRaw = meta.extra.value || '';
+
+  let yaml = '---\n';
+
+  if (title) yaml += `title: ${title}\n`;
+  if (slug) yaml += `slug: ${slug}\n`;
+  if (date) yaml += `date: ${date}\n`;
+
+  if (tags.length) {
+    yaml += 'tags:\n';
+    tags.forEach(t => (yaml += ` - ${t}\n`));
+  }
+
+  if (categories.length) {
+    yaml += 'categories:\n';
+    categories.forEach(c => (yaml += ` - ${c}\n`));
+  }
+
+  if (excerpt) yaml += `excerpt: "${excerpt.replace(/"/g, '\\"')}"\n`;
+
+  // 自定义字段追加
+  extraRaw
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .forEach(line => (yaml += line + '\n'));
+
+  yaml += '---\n\n';
+
+  return yaml;
+}
+
+/* ================================
+   导出 Markdown / HTML
+================================ */
+function downloadFile(filename, mime, content) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+
+  a.href = url;
+  a.download = filename;
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+async function exportMarkdown() {
+  const fm = buildFrontMatter();
+  const content = fm + markdownInput.value;
+
+  const title = meta.slug.value || meta.title.value || 'hexo-post';
+  const filename = `${title}.md`;
+
+  if (window.electronAPI && outputDir) {
+    try {
+      await window.electronAPI.saveFile({ dir: outputDir, filename, content });
+      alert('已保存到：\n' + outputDir + '\\' + filename);
+      return;
+    } catch (e) {
+      alert('保存失败，将改为浏览器下载。\n' + e.message);
+    }
+  }
+
+  downloadFile(filename, 'text/markdown;charset=utf-8', content);
+}
+
+async function exportHtml() {
+  const fm = buildFrontMatter();
+  const htmlBody = preview.innerHTML;
+
+  const fullHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>${meta.title.value || '预览'}</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css" />
+  <style>
+    body { font-family: system-ui; padding:20px; line-height: 1.7; }
+    img { max-width: 100%; height:auto; }
+    pre { padding:10px; border-radius:8px; overflow:auto; }
+    code { font-family: "Fira Code"; }
+  </style>
+</head>
+<body>
+  <pre>${fm.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+  ${htmlBody}
+</body>
+</html>`;
+
+  const title = meta.slug.value || meta.title.value || 'hexo-post';
+  const filename = `${title}.html`;
+
+  if (window.electronAPI && outputDir) {
+    try {
+      await window.electronAPI.saveFile({ dir: outputDir, filename, content: fullHtml });
+      alert('已保存到：\n' + outputDir + '\\' + filename);
+      return;
+    } catch (e) {
+      alert('保存失败，将使用浏览器下载。\n' + e.message);
+    }
+  }
+
+  downloadFile(filename, 'text/html;charset=utf-8', fullHtml);
+}
+
+/* ================================
+   选择输出目录 / Hexo 目录
+================================ */
+async function chooseOutputDir() {
+  if (!window.electronAPI?.chooseOutputDir) {
+    alert('当前为浏览器模式，无法选择文件夹。');
+    return;
+  }
+  const dir = await window.electronAPI.chooseOutputDir();
+  if (dir) {
+    outputDir = dir;
+    outputDirLabel.textContent = dir;
+    localStorage.setItem(CONFIG.storageKeyOutputDir, dir);
+  }
+}
+
+async function chooseHexoDir() {
+  if (!window.electronAPI?.chooseHexoDir) {
+    alert('当前为浏览器模式，无法选择 Hexo 目录。');
+    return;
+  }
+  const dir = await window.electronAPI.chooseHexoDir();
+  if (dir) {
+    hexoDir = dir;
+    hexoDirLabel.textContent = dir;
+    localStorage.setItem(CONFIG.storageKeyHexoDir, dir);
+  }
+}
+
+/* ================================
+   导出到 Hexo / 运行 Hexo 命令
+================================ */
+async function exportToHexo() {
+  const fm = buildFrontMatter();
+  const content = fm + markdownInput.value;
+
+  const title = meta.slug.value || meta.title.value || 'hexo-post';
+  const filename = `${title}.md`;
+
+  if (!window.electronAPI?.saveFile) {
+    alert('浏览器模式下无法写入 Hexo 目录');
+    exportMarkdown();
+    return;
+  }
+
+  if (!hexoDir) {
+    alert('请先选择 Hexo 目录');
+    return;
+  }
+
+  try {
+    const result = await window.electronAPI.saveFile({
+      dir: hexoDir,
+      filename,
+      content
+    });
+
+    alert('已导出到 Hexo：\n' + result);
+  } catch (e) {
+    alert('写入失败：\n' + e.message);
+  }
+}
+
+async function openHexoDir() {
+  if (!hexoDir) {
+    alert('请先选择 Hexo 目录');
+    return;
+  }
+  if (!window.electronAPI?.openHexoDir) {
+    alert('浏览器模式无法打开文件夹');
+    return;
+  }
+  await window.electronAPI.openHexoDir(hexoDir);
+}
+
+async function runHexo(cmd) {
+  if (!hexoDir) {
+    alert('请先选择 Hexo 目录');
+    return;
+  }
+
+  if (!window.electronAPI?.runHexoCommand) {
+    alert('浏览器模式无法执行 hexo 命令');
+    return;
+  }
+
+  try {
+    const res = await window.electronAPI.runHexoCommand({
+      hexoPostsDir: hexoDir,
+      cmd
+    });
+
+    if (cmd === 's') {
+      alert('hexo s 已启动，请访问 http://localhost:4000');
+      return;
+    }
+
+    if (res.code === 0) {
+      alert(`hexo ${cmd} 执行成功：\n\n${res.stdout}`);
+    } else {
+      alert(`执行失败：\n${res.stderr}`);
+    }
+  } catch (e) {
+    alert('命令失败：\n' + e.message);
+  }
+}
+
+function runHexoG() { runHexo('g'); }
+function runHexoD() { runHexo('d'); }
+function runHexoS() {
+  if (!confirm('将启动 hexo s 预览服务，继续吗？')) return;
+  runHexo('s');
+}
+function runHexoClean() {
+  if (!confirm('将执行 hexo clean，继续吗？')) return;
+  runHexo('clean');
+}
+
+/* ================================
+   自动写入当前时间
+================================ */
+function fillNow() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const s =
+    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ` +
+    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  meta.date.value = s;
+  saveMeta();
+}
+
+/* ================================
+   debounce 工具
+================================ */
+function debounce(fn, delay) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+/* ================================
+   恢复上次状态
+================================ */
+function restoreState() {
+  try {
+    const metaStr = localStorage.getItem(CONFIG.storageKeyMeta);
+    if (metaStr) {
+      const data = JSON.parse(metaStr);
+      Object.keys(meta).forEach(k => {
+        if (data[k] !== undefined) meta[k].value = data[k];
+      });
+    }
+  } catch (e) {}
+
+  const content = localStorage.getItem(CONFIG.storageKeyContent);
+  if (content) markdownInput.value = content;
+
+  const theme = localStorage.getItem(CONFIG.storageKeyTheme) || 'dark';
+  themeSelect.value = theme;
+  changeTheme(theme);
+
+  const mode = localStorage.getItem(CONFIG.storageKeyMode) || 'both';
+  setMode(mode);
+
+  try {
+    const bgStr = localStorage.getItem(CONFIG.storageKeyBg);
+    if (bgStr) {
+      const bg = JSON.parse(bgStr);
+      bgColorInput.value = bg.color;
+      setBgColor(bg.color);
+
+      if (bg.image) {
+        editorBgInner.style.backgroundImage = `url("${bg.image}")`;
+        previewBgInner.style.backgroundImage = `url("${bg.image}")`;
+        document.getElementById('bg-url-input').value = bg.image;
+      }
+    }
+  } catch (e) {}
+
+  const dir = localStorage.getItem(CONFIG.storageKeyOutputDir);
+  if (dir) {
+    outputDir = dir;
+    outputDirLabel.textContent = dir;
+  }
+
+  const hdir = localStorage.getItem(CONFIG.storageKeyHexoDir);
+  if (hdir) {
+    hexoDir = hdir;
+    hexoDirLabel.textContent = hdir;
+  }
+
+  renderPreview();
+}
+
+restoreState();
+</script>
+
+</body> </html> ```
