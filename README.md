@@ -5,29 +5,27 @@
 
 # Hexo Editor
 
-> 📌 一个专为 Hexo 博客作者打造的本地 Markdown 编辑器 + Hexo front-matter 可视化设置 + 一键 Hexo 操作（clean / g / s / d）。
-
-支持 **Markdown 实时预览、MathJax、Mermaid、代码高亮、图片插入、自定义 front-matter 字段、自定义背景 & 主题** 等功能。  
-基于 **Electron + HTML + JS**，可打包为 **Windows .exe** 运行。
+> 📌 一个专为 Hexo 博客作者打造的本地 Markdown 编辑器，支持 Hexo front-matter 可视化、实时预览、Hexo 一键命令、文章导出等功能。  
+> 基于 **Electron + HTML + JavaScript** 构建，可打包为 Windows 桌面应用。
 
 ---
 
 ## 🌟 功能特性
 
-### ✍️ Markdown 编辑 & 实时预览
-- 支持完整 Markdown 语法
-- 代码高亮（Highlight.js）
-- 数学公式（MathJax）
-- 流程图 / 序列图等（Mermaid）
-- 插入本地图片 / 网络图片
-- 文字颜色标记（`<span style="color:...">`）
-- 自动保存内容（LocalStorage）
+### ✍️ Markdown 编辑与实时预览
+- 完整 Markdown 语法支持  
+- 代码高亮（Highlight.js）  
+- 数学公式（MathJax）  
+- 流程图 / 时序图（Mermaid）  
+- 插入本地或在线图片  
+- 文本颜色标记（`<span style="color:...">`）  
+- 自动保存到 LocalStorage  
 
 ---
 
-### 🧾 Hexo Front-matter 可视化编辑
+### 🧾 Front-matter 可视化编辑
 
-内置字段：
+内置字段包括：
 
 - `title`
 - `slug`
@@ -36,75 +34,95 @@
 - `categories`
 - `excerpt`
 
-并支持 **自定义 front-matter 字段**：  
-在“自定义 Front-matter”输入框中按行填写：
+支持 **自定义 Front-matter 字段**：  
+只需在输入框中按行填写即可：
+
 ```yaml
 top: true
 banner: /img/banner.jpg
 keywords: Hexo, Markdown, Editor
 toc: true
+```
 
-会被原样追加到 front-matter 里，兼容各种 Hexo 主题。
+所有自定义字段都会自动追加到 front-matter。
 
-### 🧰 一键 Hexo 操作（Electron 版本）
-配置好 Hexo 目录后，可一键执行：
+---
 
-hexo clean
+### ⚙️ 一键 Hexo 操作（Electron 桌面版）
 
-hexo g
+配置 Hexo 目录后即可运行：
 
-hexo s
+- `hexo clean`
+- `hexo g`
+- `hexo s`
+- `hexo d`
+- 一键导出文章到 `source/_posts`
 
-hexo d
+---
 
-一键导出文章到 source/_posts
+### 💾 多格式导出
 
-### 💾 文件导出
-导出为 .md（带完整 front-matter）
+- 导出 `.md`（带完整 front-matter）
+- 导出 `.html`（包含渲染后的内容）
+- 支持自定义输出目录（Electron 桌面版）
 
-导出为 .html（包含渲染后的内容）
+---
 
-支持自定义输出目录（Electron 版本）
+## 🖼 界面截图
 
-### 🖼 界面预览
-你可以将实际截图保存为 screenshot1.png / screenshot2.png 放在仓库根目录
-📷 Screenshot 1 – 编辑 + 预览界面
-📷 Screenshot 2 – front-matter 设置面板
+（可将真实截图命名为 `screenshot1.png`、`screenshot2.png`，放在仓库根目录）
 
-### 🚀 本地运行
-确保已安装 Node.js，然后：
+```
+📷 Screenshot 1 – 编辑器 + 预览区  
+📷 Screenshot 2 – Front-matter 管理界面
+```
 
-git clone https://github.com/orangetect/Hexo-Editor.git
+---
+
+## 🚀 本地开发运行
+
+```bash
+git clone https://github.com/yourname/Hexo-Editor.git
 cd Hexo-Editor
 
-# 安装依赖
 npm install
-
-# 开发调试
 npm run start
-### 📦 打包为 Windows EXE
-复制代码
+```
+
+---
+
+## 📦 打包为 Windows EXE
+
+```bash
 npm run dist
+```
 
-打包完成后，安装包 / 可执行文件位于：
+打包后的文件将输出到：
 
+```
 dist/
-你可以上传到 GitHub Releases 分发给其他用户。
+```
 
-###📁 项目结构
+---
+
+## 📁 项目结构
+
+```text
 Hexo-Editor/
 ├── index.html          # 主界面（编辑器 + 预览）
 ├── main.js             # Electron 主进程
-├── preload.js          # 与前端交互的桥梁
+├── preload.js          # 前端与主进程通信的桥梁
 ├── package.json
 ├── dist/               # 打包输出目录
 ├── README.md           # 中文说明
 └── README-EN.md        # 英文说明
-### 📚 自定义 front-matter 示例
-完整示例：
+```
 
-yaml
-复制代码
+---
+
+## 📚 Front-matter 示例
+
+```yaml
 ---
 title: 使用 Hexo Editor 写博文
 date: 2025-01-01 12:00:00
@@ -121,22 +139,37 @@ keywords: Hexo, Markdown, Editor
 toc: true
 comment: true
 ---
-### 🧠 常见问题 FAQ
-🔹 Hexo 报 YAMLException：a multiline key may not be an implicit key
-原因通常是 front-matter 中出现了单独一行的文本，不是 key: value 格式。
-请确保“自定义 front-matter”中的每一行都是 YAML 合法语法，例如：
+```
 
-✅ 正确：
+---
 
-复制代码
+## 🧠 常见问题 FAQ
+
+### 🔹 YAMLException：`a multiline key may not be an implicit key`
+
+通常是因为 front-matter 中出现了非 `key: value` 格式的内容。
+
+**正确写法：**
+
+```yaml
 top: true
 banner: /img/banner.jpg
-❌ 错误：
+```
 
-复制代码
-这是错误写法
+**错误写法：**
+
+```yaml
+这是不合法的 YAML
 top true
-### 📄 License
-MIT © orangetect
+```
 
-如果觉得好用，欢迎 ⭐ Star 支持一下！
+请确保自定义字段每一行都是合法 YAML。
+
+---
+
+## 📄 License
+
+MIT © yourname
+
+如果觉得好用，欢迎点个 ⭐ 支持一下！
+
