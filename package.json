@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder -p never"
+    "dist": "electron-builder"
   },
   "devDependencies": {
     "electron": "^30.5.1",
@@ -36,7 +36,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },
-    "publish": "never"
+    "publish": null
   },
   "dependencies": {
     "7zip-bin": "^5.2.0",
